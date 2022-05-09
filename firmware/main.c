@@ -16,7 +16,7 @@ static void render_number(s32 num);
 int main(void)
 {
     lcd_init();
-    adc_init(ADC_PRESCALER_2, ADC_REF_AVCC);
+    adc_init(ADC_PRESCALER_2, ADC_REF_INTERNAL_2V56);
 
     // test LCD
     lcd_set_cursor(0, 0);
