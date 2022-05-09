@@ -1,25 +1,24 @@
-#define F_CPU 8000000L
+#include "config.h"
 #include <avr/io.h>
 #include <util/delay.h>
+#include "std_types.h"
+#include "bit_math.h"
+#include "utils.h"
 
-#define GET_BIT(VAR,BITNO)	((VAR>>BITNO)&1)
-
-// A0 -> OUTPUT LED
-// A1 -> INPUT SWITCH
 
 int main(void)
 {
-	DDRA = 0b00000001;
-	PORTA = 0b00000010;
+	PORT_DDR(PORT_A) = 0b00000001;
+	PORT_PORT(PORT_A) = 0b00000010;
 
-	while (1){
+	while (1)
+    {
 	    if(!GET_BIT(PINA,1)){
-	        PORTA = 0b00000011;
+	        PORT_PORT(PORT_A) = 0b00000011;
 	        _delay_ms(200);
-            PORTA = 0b00000010;
+            PORT_PORT(PORT_A) = 0b00000010;
             _delay_ms(200);
         }
-				
 	}
 
     return 0;
