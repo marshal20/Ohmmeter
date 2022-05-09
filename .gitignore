@@ -1,0 +1,4 @@
+/.vscode/
+/firmware/build/
+/simulation/*.pdsbak
+
