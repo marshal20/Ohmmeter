@@ -1,6 +1,9 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#include <avr/io.h>
+
+
 #define PORT_A 0
 #define PORT_B 1
 #define PORT_C 2
