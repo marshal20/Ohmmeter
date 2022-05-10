@@ -3,7 +3,7 @@
 
 
 #define LCD_DATA_PORT PORT_C
-#define LCD_CTRL_PORT PORT_D
+#define LCD_CTRL_PORT PORT_B
 
 #define LCD_RS_PIN 0
 #define LCD_RW_PIN 1
