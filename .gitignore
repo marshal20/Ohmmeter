@@ -1,4 +1,5 @@
 /.vscode/
 /firmware/build/
 /simulation/*.pdsbak
+/simulation/*.workspace
 
