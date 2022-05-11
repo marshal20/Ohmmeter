@@ -3,7 +3,7 @@ CFLAGS = -g -Wall -mcall-prologues -mmcu=$(MCU) -Os -fshort-enums
 LDFLAGS = -Wl,-gc-sections -Wl,-relax
 CC = avr-gcc
 BUILD_DIR = ./build/
-SRC = main.c lcd_implementation.c adc_implementation.c
+SRC = main.c lcd_implementation.c adc_implementation.c input.c tone.c
 TARGET = Ohmmeter
 
 OBJ = $(SRC:.c=.o)
