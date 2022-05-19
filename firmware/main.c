@@ -15,8 +15,8 @@
 #define I_SELECT_PORT PORT_D
 #define LOOP_DELAY 100
 #define READING_MAX_RANGE 1020
-#define RANGE_SWITCH_MIN 256
-#define RANGE_SWITCH_MAX 900
+#define RANGE_SWITCH_MIN 100
+#define RANGE_SWITCH_MAX 800
 #define ADC_MAX 1023
 
 
@@ -32,10 +32,12 @@
 
 // ranges table
 static const u32 range_differential_scale_xe6[4] = {88865UL, 442055UL, 442055UL, 442055UL};
-static const u32 range_resistance_reference[8] = {1UL, 10UL, 100UL, 1000UL, 10000UL, 100000UL, 1000000UL, 10000000UL};
+//static const u32 range_resistance_reference[8] = {1UL, 10UL, 105UL, 978UL, 9880UL, 99000UL, 977000UL, 7710000UL};
+static const u32 range_resistance_reference[8] = {1UL, 10UL, 100L, 1000UL, 10000UL, 100000UL, 1000000UL, 10000000UL};
+static const u32 range_scales_1000_over_x[8] = {1000UL, 1000UL, 1400UL, 1500UL, 1350UL, 1500UL, 1400UL, 1000UL};
 static const char exponent_multipliers_character[3] = {' ', 'K', 'M'};
 static const char exponent_multipliers_character_milli[4] = {'m', ' ', 'K', 'M'};
-static const char exponent_multipliers_character_micro[4] = {'u', 'm', ' ', 'K', 'M'};
+static const char exponent_multipliers_character_micro[5] = {'u', 'm', ' ', 'K', 'M'};
 
 // differential ranges
 #define DIFF_RANGE_0_MAX 400000UL // 400m Ohm
@@ -80,31 +82,59 @@ static void normal_mode(void)
 	if (reading < READING_MAX_RANGE)
 	{
 		// calculate the resistance = R/(1/ratio - 1) = R/(ADC_MAX/reading - 1) = R*reading/(ADC_MAX - reading)
-		resistance_value = range_resistance_reference[range]*100UL/(((u32)100UL*(u32)ADC_MAX*10UL/reading_10x) - (u32)100UL);
+		resistance_value = range_resistance_reference[range]*reading/((u32)ADC_MAX-(u32)reading);
+		//resistance_value = range_resistance_reference[range]*100UL/(((u32)100UL*(u32)ADC_MAX*10UL/reading_10x) - (u32)100UL);
 		resistance_value_milli = range_resistance_reference[range]*reading_10x*100UL/((u32)ADC_MAX - reading_10x/10UL);
 
+		// apply scale
+		resistance_value = resistance_value*1000UL / range_scales_1000_over_x[range];
+		resistance_value_milli = resistance_value_milli*1000UL / range_scales_1000_over_x[range];
+
 		// render resistance to the LCD (3 digits left to the point and 3 digits right)
-		if (resistance_value > 100UL)
+		if (resistance_value > 1000UL)
 		{
+			
 			u8 digits_count = number_digits_count_u32(resistance_value);
 			u8 multiplier_exponent = ((digits_count>0?digits_count:1)-1)/3 * 3;
 			render_number_with_point(resistance_value, multiplier_exponent);
 			lcd_send_data(exponent_multipliers_character[multiplier_exponent/3]);
 			lcd_send_string(" Ohm");
+			
+
+			/*
+			render_number(resistance_value);
+			lcd_send_string(" Ohm");
+			lcd_send_data(' ');
+			render_number(reading);
+			*/
 		}
 		else
 		{
+			
 			u8 digits_count = number_digits_count_u32(resistance_value_milli);
 			u8 multiplier_exponent = ((digits_count>0?digits_count:1)-1)/3 * 3;
 			render_number_with_point(resistance_value_milli, multiplier_exponent);
 			lcd_send_data(exponent_multipliers_character_milli[multiplier_exponent/3]);
 			lcd_send_string(" Ohm");
+			
+
+			/*
+			render_number(resistance_value_milli);
+			lcd_send_string("m Ohm");
+			*/
 		}
 	}
 	else
 	{
 		lcd_send_string("Over Load");
 	}
+
+	
+	// DEBUG: print range
+	lcd_set_cursor(1, 0);
+	lcd_send_string("Range: ");
+	render_number(range);
+	
 
 	// switch the range
 	if (range > 2 && reading < RANGE_SWITCH_MIN)
@@ -125,6 +155,7 @@ static void normal_mode(void)
 	{
 		range = 7;
 	}
+
 }
 
 static void differential_mode(void)
@@ -133,8 +164,6 @@ static void differential_mode(void)
 	u8 i;
     u32 reading;
 	u32 reading_10x;
-	u32 resistance_value;
-	u32 resistance_value_milli;
 	u32 resistance_value_micro;
 
 	// set the range (multiplex current)
@@ -202,36 +231,36 @@ static void differential_mode(void)
 	// down
 	if (range == 0)
 	{
-		if (resistance_value_micro > DIFF_RANGE_0_MAX) // range up
+		if (resistance_value_micro > DIFF_RANGE_0_MAX+1000UL) // range up
 		{
 			range = 1;
 		}
 	}
 	else if (range == 1)
 	{
-		if (resistance_value_micro < DIFF_RANGE_0_MAX) // range down
+		if (resistance_value_micro < DIFF_RANGE_0_MAX-1000UL) // range down
 		{
 			range = 0;
 		}
-		else if (resistance_value_micro > DIFF_RANGE_1_MAX) // range up
+		else if (resistance_value_micro > DIFF_RANGE_1_MAX+10000UL) // range up
 		{
 			range = 2;
 		}
 	}
 	else if (range == 2)
 	{
-		if (resistance_value_micro < DIFF_RANGE_1_MAX) // range down
+		if (resistance_value_micro < DIFF_RANGE_1_MAX-10000UL) // range down
 		{
 			range = 1;
 		}
-		else if (resistance_value_micro > DIFF_RANGE_2_MAX) // range up
+		else if (resistance_value_micro > DIFF_RANGE_2_MAX+100000UL) // range up
 		{
 			range = 3;
 		}
 	}
 	else if (range == 3) // 40 Ohm
 	{
-		if (resistance_value_micro < DIFF_RANGE_2_MAX) // range down
+		if (resistance_value_micro < DIFF_RANGE_2_MAX-100000UL) // range down
 		{
 			range = 2;
 		}
@@ -247,30 +276,8 @@ static void differential_mode(void)
 
 int main(void)
 {
-	/*
-	PORT_DDR(PORT_A) = 0xFF;
-	PORT_PORT(PORT_A) = 0xFF;
-
-	while(1)
-	{
-	 	PORT_PORT(PORT_A) = ~PORT_PORT(PORT_A);
-	 	_delay_ms(500);
-	}
-	
-	return;
-	*/
-
-	/*
-	lcd_init();
-	lcd_send_string("Andrew");
-	lcd_set_cursor(1, 0);
-	lcd_send_string(":D :)");
-	return;
-	*/
-	
-
     lcd_init();
-    adc_init(ADC_PRESCALER_2, ADC_REF_AVCC);
+    adc_init(ADC_PRESCALER_16, ADC_REF_AVCC);
 	PORT_DDR(I_SELECT_PORT) = 0xFF; // set I_SELECT_PORT to output
 
 	// input push buttons

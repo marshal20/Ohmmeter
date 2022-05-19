@@ -10,6 +10,10 @@
 #include "input.h"
 #include "tone.h"
 
+
+void render_number(s32 num);
+
+
 // keys frequencies (4th octave)
 static u16 keys_octave8_frequencies_table[12] = {
 	4186, // C8
@@ -31,21 +35,21 @@ void music_mode(void)
 {
 	tone_init();
 	input_init();
-	adc_init(ADC_PRESCALER_2, ADC_REF_AVCC);
+	adc_init(ADC_PRESCALER_16, ADC_REF_AVCC);
 
 	// welcome text
 	lcd_clear();
 	lcd_send_string("Music Mode");
 
 	// welcome tone
-	tone_start(keys_octave8_frequencies_table[0]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[2]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[4]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[5]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[7]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[9]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[10]); _delay_ms(250);
-	tone_start(keys_octave8_frequencies_table[11]); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[0]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[2]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[4]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[5]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[7]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[9]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[10]>>4); _delay_ms(250);
+	tone_start(keys_octave8_frequencies_table[11]>>4); _delay_ms(250);
 	tone_stop();
 
 	u8 octave = 4;
@@ -105,6 +109,6 @@ void music_mode(void)
 		}
 
 		// delay a bit
-		_delay_ms(1);
+		_delay_ms(10);
 	}
 }
