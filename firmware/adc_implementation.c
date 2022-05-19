@@ -44,7 +44,7 @@ u16 adc_convert(u8 channel)
 	CLR_BIT(PORT_PORT(PORT_A), channel);
 
 	// set channel mux the first 3 bits in ADMUX (ADMUX[0:2])
-	WRITE_MASK(ADMUX, 0b00000111, channel);
+	WRITE_MASK(ADMUX, 0b00011111, channel);
 	// bits 3 and 4 in ADMUX (ADMUX[3:4]) controls the mode, in this case we choose single ended input
 	CLR_BIT(ADMUX, MUX4);
 	CLR_BIT(ADMUX, MUX3);
@@ -64,4 +64,82 @@ u16 adc_convert(u8 channel)
 	return ADC;
 }
 
+
+u16 adc_convert_P3_N2_200x(void)
+{
+	// set pin to input (high impedance mode)
+	CLR_BIT(PORT_DDR(PORT_A), 2);
+	CLR_BIT(PORT_PORT(PORT_A), 2);
+	CLR_BIT(PORT_DDR(PORT_A), 3);
+	CLR_BIT(PORT_PORT(PORT_A), 3);
+
+	// set channel mux to differential (Pos -> ADC3    Neg -> ADC2) 200x
+	WRITE_MASK(ADMUX, 0b00011111, 0b01111);
+
+	// start conversion
+	SET_BIT(ADCSRA, ADSC);
+
+    // wait for the conversion to finish (ADIF is set)
+    while (GET_BIT(ADCSRA, ADIF) == 0);
+
+    // clear ADIF
+    SET_BIT(ADCSRA, ADIF);
+
+    // we can return ((ADCH << 8) | ADCL) but this causes proteus to complain:
+    //  PC=0x0986. [AVR AD CONVERTER] Result is not written to the ADC register because it has been locked. [U1]
+    // so we define ADC as the 16 bit result (ADLAR must be cleared) and return it
+	return ADC;
+}
+
+u16 adc_convert_P3_N2_10x(void)
+{
+	// set pin to input (high impedance mode)
+	CLR_BIT(PORT_DDR(PORT_A), 2);
+	CLR_BIT(PORT_PORT(PORT_A), 2);
+	CLR_BIT(PORT_DDR(PORT_A), 3);
+	CLR_BIT(PORT_PORT(PORT_A), 3);
+
+	// set channel mux to differential (Pos -> ADC3    Neg -> ADC2) 200x
+	WRITE_MASK(ADMUX, 0b00011111, 0b01101);
+
+	// start conversion
+	SET_BIT(ADCSRA, ADSC);
+
+    // wait for the conversion to finish (ADIF is set)
+    while (GET_BIT(ADCSRA, ADIF) == 0);
+
+    // clear ADIF
+    SET_BIT(ADCSRA, ADIF);
+
+    // we can return ((ADCH << 8) | ADCL) but this causes proteus to complain:
+    //  PC=0x0986. [AVR AD CONVERTER] Result is not written to the ADC register because it has been locked. [U1]
+    // so we define ADC as the 16 bit result (ADLAR must be cleared) and return it
+	return ADC;
+}
+
+u16 adc_convert_P3_N2_1x(void)
+{
+	// set pin to input (high impedance mode)
+	CLR_BIT(PORT_DDR(PORT_A), 2);
+	CLR_BIT(PORT_PORT(PORT_A), 2);
+	CLR_BIT(PORT_DDR(PORT_A), 3);
+	CLR_BIT(PORT_PORT(PORT_A), 3);
+
+	// set channel mux to differential (Pos -> ADC3    Neg -> ADC2) 200x
+	WRITE_MASK(ADMUX, 0b00011111, 0b11011);
+
+	// start conversion
+	SET_BIT(ADCSRA, ADSC);
+
+    // wait for the conversion to finish (ADIF is set)
+    while (GET_BIT(ADCSRA, ADIF) == 0);
+
+    // clear ADIF
+    SET_BIT(ADCSRA, ADIF);
+
+    // we can return ((ADCH << 8) | ADCL) but this causes proteus to complain:
+    //  PC=0x0986. [AVR AD CONVERTER] Result is not written to the ADC register because it has been locked. [U1]
+    // so we define ADC as the 16 bit result (ADLAR must be cleared) and return it
+	return ADC;
+}
 

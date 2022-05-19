@@ -20,5 +20,8 @@ void adc_init(u8 prescaler, u8 reference);
 
 u16 adc_convert(u8 channel); /*channel from 0 to 7*/
 
+u16 adc_convert_P3_N2_200x(void); // differential (Pos -> ADC3    Neg -> ADC2) 200x
+u16 adc_convert_P3_N2_10x(void); // differential (Pos -> ADC3    Neg -> ADC2) 10x
+u16 adc_convert_P3_N2_1x(void); // differential (Pos -> ADC3    Neg -> ADC2) 1x
 
 #endif /* __ADC_INTERFACE_H__ */

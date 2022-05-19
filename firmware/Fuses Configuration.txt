@@ -1,0 +1,17 @@
+We use the default fuses configuration with some exceptions as following:
+    - JTAGEN is programmed to 1 (Unprogramed, JTAG disabled) 
+      to disable JTAG functionalities, so that we can use D[2..5].
+    - CKSEL is programmed to be .... for 8 Mhz crystal oscillator.
+
+MCU = atmega16
+
+** JTAG disabled + internal 1 Mhz oscillator:
+    low-fuse  = 11101111 = 0xE1
+    high-fuse = 11011001 = 0xD9
+    avrdude -c usbasp -p $(MCU) -B12 -U lfuse:w:0xe1:m -U hfuse:w:0xd9:m
+
+** JTAG disabled + 8 Mhz crystal oscillator:
+    low-fuse  = 11101111 = 0xEF
+    high-fuse = 11011001 = 0xD9
+    avrdude -c usbasp -p $(MCU) -B12 -U lfuse:w:0xef:m -U hfuse:w:0xd9:m
+
