@@ -31,10 +31,17 @@
 //   7 >>> 10M Ohm Reference
 
 // ranges table
-static const u32 range_differential_scale_xe6[4] = {88865UL, 447909UL, 447909UL, 447909UL};
+static const u32 range_differential_scale_xe6[4] = {88865UL, 442055UL, 442055UL, 442055UL};
 static const u32 range_resistance_reference[8] = {1UL, 10UL, 100UL, 1000UL, 10000UL, 100000UL, 1000000UL, 10000000UL};
 static const char exponent_multipliers_character[3] = {' ', 'K', 'M'};
 static const char exponent_multipliers_character_milli[4] = {'m', ' ', 'K', 'M'};
+static const char exponent_multipliers_character_micro[4] = {'u', 'm', ' ', 'K', 'M'};
+
+// differential ranges
+#define DIFF_RANGE_0_MAX 400000UL // 400m Ohm
+#define DIFF_RANGE_1_MAX 2000000UL // 2 Ohm
+#define DIFF_RANGE_2_MAX 40000000UL // 40 Ohm
+#define DIFF_RANGE_3_MAX 400000000UL // 400 Ohm
 
 
 // helper functions
@@ -43,6 +50,7 @@ static u8 number_digits_count_u32(u32 number);
 static s32 power10(u8 exponent);
 void render_number(s32 num);
 static void render_number_u32(u32 num);
+static void render_number_with_point(u32 num, u8 point_location);
 
 
 static void normal_mode(void)
@@ -75,43 +83,22 @@ static void normal_mode(void)
 		resistance_value = range_resistance_reference[range]*100UL/(((u32)100UL*(u32)ADC_MAX*10UL/reading_10x) - (u32)100UL);
 		resistance_value_milli = range_resistance_reference[range]*reading_10x*100UL/((u32)ADC_MAX - reading_10x/10UL);
 
-		// render resistance to the LCD
+		// render resistance to the LCD (3 digits left to the point and 3 digits right)
 		if (resistance_value > 100UL)
 		{
 			u8 digits_count = number_digits_count_u32(resistance_value);
 			u8 multiplier_exponent = ((digits_count>0?digits_count:1)-1)/3 * 3;
-			render_number_u32(resistance_value / power10(multiplier_exponent));
-			lcd_send_data('.');
-			for (s8 exponent = ((s8)multiplier_exponent-1); exponent >= 0 && exponent >= ((s8)multiplier_exponent-3); exponent--)
-			{
-				lcd_send_data(digit_to_char(resistance_value/power10(exponent)));
-			}
+			render_number_with_point(resistance_value, multiplier_exponent);
 			lcd_send_data(exponent_multipliers_character[multiplier_exponent/3]);
 			lcd_send_string(" Ohm");
-
-			/*
-			lcd_clear();
-			render_number_u32(resistance_value);
-			lcd_send_string(" Ohm");
-			*/
 		}
 		else
 		{
 			u8 digits_count = number_digits_count_u32(resistance_value_milli);
 			u8 multiplier_exponent = ((digits_count>0?digits_count:1)-1)/3 * 3;
-			render_number_u32(resistance_value_milli / power10(multiplier_exponent));
-			lcd_send_data('.');
-			for (s8 exponent = ((s8)multiplier_exponent-1); exponent >= 0 && exponent >= ((s8)multiplier_exponent-3); exponent--)
-			{
-				lcd_send_data(digit_to_char(resistance_value_milli/power10(exponent)));
-			}
+			render_number_with_point(resistance_value_milli, multiplier_exponent);
 			lcd_send_data(exponent_multipliers_character_milli[multiplier_exponent/3]);
 			lcd_send_string(" Ohm");
-
-			/*
-			render_number_u32(resistance_value_milli);
-			lcd_send_string("m Ohm");
-			*/
 		}
 	}
 	else
@@ -128,6 +115,7 @@ static void normal_mode(void)
 	{
 		range++;
 	}
+
 	// clamp range value to a valid range (2..7)
 	if (range < 2)
 	{
@@ -182,24 +170,28 @@ static void differential_mode(void)
 
 	// show reading on the screen
 	lcd_clear();
-	if (reading < READING_MAX_RANGE)
+	// calculations
+	if (range <= 1)
 	{
-		if (range <= 1)
-		{
-			resistance_value_micro = reading*range_differential_scale_xe6[range]/200UL;
-		}
-		else if (range == 2)
-		{
-			resistance_value_micro = reading*range_differential_scale_xe6[range]/10UL;
-		}
-		else if (range == 3)
-		{
-			resistance_value_micro = reading*range_differential_scale_xe6[range]/1UL;
-		}
-
+		resistance_value_micro = reading*range_differential_scale_xe6[range]/200UL;
+	}
+	else if (range == 2)
+	{
+		resistance_value_micro = reading*range_differential_scale_xe6[range]/10UL;
+	}
+	else if (range == 3)
+	{
+		resistance_value_micro = reading*range_differential_scale_xe6[range]/1UL;
+	}
+	
+	if (reading < READING_MAX_RANGE && resistance_value_micro <= DIFF_RANGE_3_MAX)
+	{
 		// render the resistance value to the LCD
-		render_number_u32(resistance_value_micro);
-		lcd_send_string("u Ohm");
+		u8 digits_count = number_digits_count_u32(resistance_value_micro);
+		u8 multiplier_exponent = ((digits_count>0?digits_count:1)-1)/3 * 3;
+		render_number_with_point(resistance_value_micro, multiplier_exponent);
+		lcd_send_data(exponent_multipliers_character_micro[multiplier_exponent/3]);
+		lcd_send_string(" Ohm");
 	}
 	else
 	{
@@ -207,19 +199,50 @@ static void differential_mode(void)
 	}
 
 	// switch the range
-	if (range > 0 && reading < RANGE_SWITCH_MIN)
+	// down
+	if (range == 0)
 	{
-		range--;
+		if (resistance_value_micro > DIFF_RANGE_0_MAX) // range up
+		{
+			range = 1;
+		}
 	}
-	if (range < 3 && reading > RANGE_SWITCH_MAX)
+	else if (range == 1)
 	{
-		range++;
+		if (resistance_value_micro < DIFF_RANGE_0_MAX) // range down
+		{
+			range = 0;
+		}
+		else if (resistance_value_micro > DIFF_RANGE_1_MAX) // range up
+		{
+			range = 2;
+		}
 	}
+	else if (range == 2)
+	{
+		if (resistance_value_micro < DIFF_RANGE_1_MAX) // range down
+		{
+			range = 1;
+		}
+		else if (resistance_value_micro > DIFF_RANGE_2_MAX) // range up
+		{
+			range = 3;
+		}
+	}
+	else if (range == 3) // 40 Ohm
+	{
+		if (resistance_value_micro < DIFF_RANGE_2_MAX) // range down
+		{
+			range = 2;
+		}
+	}
+
 	// clamp range value to a valid range (0..3)
 	if (range > 3)
 	{
 		range = 3;
 	}
+
 }
 
 int main(void)
@@ -398,3 +421,19 @@ static void render_number_u32(u32 num)
 		lcd_send_data(digit_to_char((u8)temp));
 	}
 }
+
+static void render_number_with_point(u32 num, u8 point_location)
+{
+	render_number_u32(num / (u32)power10(point_location));
+
+	// render the point and the rest of the number (3 digits after the point)
+	if (point_location != 0)
+	{
+		lcd_send_data('.');
+		for (s8 exponent = ((s8)point_location-1); exponent >= 0 && exponent >= ((s8)point_location-3); exponent--)
+		{
+			lcd_send_data(digit_to_char(num/power10(exponent)));
+		}
+	}
+}
+
