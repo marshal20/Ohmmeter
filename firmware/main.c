@@ -63,6 +63,7 @@ static void normal_mode(void)
 	u32 reading_10x;
 	u32 resistance_value;
 	u32 resistance_value_milli;
+	u32 current_nano;
 
 	// set the range (multiplex resistance)
 	PORT_PORT(I_SELECT_PORT) = ~(1<<range); // active low
@@ -89,6 +90,11 @@ static void normal_mode(void)
 		// apply scale
 		resistance_value = resistance_value*1000UL / range_scales_1000_over_x[range];
 		resistance_value_milli = resistance_value_milli*1000UL / range_scales_1000_over_x[range];
+
+		// new way
+		current_nano = (ADC_MAX-reading)*1000000UL/range_resistance_reference[range];
+		resistance_value = reading*1000000UL/current_nano;
+		resistance_value_milli = reading*1000000UL/(current_nano/1000UL);
 
 		// render resistance to the LCD (3 digits left to the point and 3 digits right)
 		if (resistance_value > 1000UL)
@@ -164,7 +170,10 @@ static void differential_mode(void)
 	u8 i;
     u32 reading;
 	u32 reading_10x;
+	u32 resistance_value;
+	u32 resistance_value_milli;
 	u32 resistance_value_micro;
+	u32 current_micro;
 
 	// set the range (multiplex current)
 	if (range <= 1)
@@ -213,6 +222,12 @@ static void differential_mode(void)
 		resistance_value_micro = reading*range_differential_scale_xe6[range]/1UL;
 	}
 	
+	static const u32 multipliers[4] = {1, 200UL, 10UL, 1UL};
+
+	// new way
+	current_micro = (ADC_MAX-reading)*(1000000UL/100UL); // R = 100
+	resistance_value_micro = reading*1000000UL/(current_micro*multipliers[range]/1000000UL);
+
 	if (reading < READING_MAX_RANGE && resistance_value_micro <= DIFF_RANGE_3_MAX)
 	{
 		// render the resistance value to the LCD
@@ -227,46 +242,26 @@ static void differential_mode(void)
 		lcd_send_string("Over Load");
 	}
 
+	// DEBUG: print range
+	lcd_set_cursor(1, 0);
+	lcd_send_string("Range: ");
+	render_number(range);
+
 	// switch the range
-	// down
-	if (range == 0)
+	if (range > 0 && reading < 100)
 	{
-		if (resistance_value_micro > DIFF_RANGE_0_MAX+1000UL) // range up
-		{
-			range = 1;
-		}
+		range--;
 	}
-	else if (range == 1)
+	if (range < 3 && reading > 600)
 	{
-		if (resistance_value_micro < DIFF_RANGE_0_MAX-1000UL) // range down
-		{
-			range = 0;
-		}
-		else if (resistance_value_micro > DIFF_RANGE_1_MAX+10000UL) // range up
-		{
-			range = 2;
-		}
-	}
-	else if (range == 2)
-	{
-		if (resistance_value_micro < DIFF_RANGE_1_MAX-10000UL) // range down
-		{
-			range = 1;
-		}
-		else if (resistance_value_micro > DIFF_RANGE_2_MAX+100000UL) // range up
-		{
-			range = 3;
-		}
-	}
-	else if (range == 3) // 40 Ohm
-	{
-		if (resistance_value_micro < DIFF_RANGE_2_MAX-100000UL) // range down
-		{
-			range = 2;
-		}
+		range++;
 	}
 
 	// clamp range value to a valid range (0..3)
+	if (range <= 0)
+	{
+		range = 1;
+	}
 	if (range > 3)
 	{
 		range = 3;
